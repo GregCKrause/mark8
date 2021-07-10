@@ -1,13 +1,13 @@
 # Standard library
 import argparse
 from datetime import datetime as dt
-import json
 import os
 
 # Third party
-from pymongo import MongoClient
+from pymongo import MongoClient, UpdateOne
 import quandl
 
+port=os.getenv("MONGO_PORT", 27017)
 username=os.getenv("MONGO_INITDB_ROOT_USERNAME")
 password=os.getenv("MONGO_INITDB_ROOT_PASSWORD")
 quandl_api_key=os.getenv("QUANDL_API_KEY")
@@ -22,7 +22,7 @@ if __name__=="__main__":
   quandl.ApiConfig.api_key = quandl_api_key
 
   client = MongoClient(
-    'mongodb://127.0.0.1:27018',
+    'mongodb://127.0.0.1:%s' % (port),
     username=username,
     password=password
   )
@@ -37,6 +37,16 @@ if __name__=="__main__":
   eod["last_updated"] = dt.strftime(dt.now(), "%Y-%m-%d")
 
   print("Loading records to Mongo")
-  records = json.loads(eod.T.to_json()).values()
-  db[symbol].insert_many(records)
-  print("Records loaded.", symbol)
+  records = eod.to_dict("records")
+
+  updates = [
+    UpdateOne(
+      {'_id': record["_id"]},
+      {"$set": record},
+      upsert=True
+    ) for record in records
+  ]
+
+  result = db.test.bulk_write(updates)
+
+  print("Records loaded")
