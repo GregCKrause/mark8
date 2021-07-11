@@ -16,7 +16,7 @@ if __name__=="__main__":
 
   updater = EOD(MONGO_USERNAME, MONGO_PASSWORD, QUANDL_API_KEY)
 
-  queue = RedisWorkQueue(name="ingesteod")
+  queue = RedisWorkQueue(name="forecasteod")
   print("Worker with sessionID: " +  queue.sessionID())
   print("Initial queue state: empty=" + str(queue.empty()))
 
@@ -26,9 +26,9 @@ if __name__=="__main__":
       symbol = item.decode("utf-8").upper()
       print("Working on " + symbol)
       try:
-        updater.update_symbol(symbol)
+        updater.forecast_symbol(symbol)
       except Exception as e:
-        print("Exception thrown during update_symbol", symbol, e)
+        print("Exception thrown during forecast_symbol", symbol, e)
       queue.complete(item)
     else:
       print("Waiting for work")

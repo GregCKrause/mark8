@@ -40,4 +40,11 @@ docker push gregckrause/ingest-eod:latest
 
 # Run ingest job
 kubectl -n mark8 apply -f ./application/market/ingest-eod.yaml
+
+# Build & push forecast-eod image
+docker build -t gregckrause/forecast-eod . -f Dockerfile.forecast.eod
+docker push gregckrause/forecast-eod:latest
+
+# Run forecast job
+kubectl -n mark8 apply -f ./application/market/forecast-eod.yaml
 ```

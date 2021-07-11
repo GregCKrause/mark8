@@ -4,8 +4,8 @@ RUN pip install pip install --upgrade pip
 COPY ./requirements.txt ./requirements.txt
 RUN pip install -r requirements.txt
 
-COPY ./src/ingest-eod.py /ingest-eod.py
+COPY ./src/forecast-eod.py /forecast-eod.py
 COPY ./src/RedisWorkQueue.py /RedisWorkQueue.py
 COPY ./src/EOD.py /EOD.py
 
-CMD  python ingest-eod.py
+CMD  python forecast-eod.py

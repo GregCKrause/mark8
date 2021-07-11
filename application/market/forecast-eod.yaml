@@ -1,0 +1,25 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: forecast-eod
+spec:
+  parallelism: 4
+  template:
+    metadata:
+      name: forecast-eod
+    spec:
+      containers:
+      - name: forecast-eod
+        image: gregckrause/forecast-eod:latest
+        env:
+        - name: MONGO_INITDB_ROOT_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: mongo
+              key: RootUser
+        - name: MONGO_INITDB_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mongo
+              key: RootPassword
+      restartPolicy: OnFailure
