@@ -5,7 +5,7 @@ COPY ./requirements.txt ./requirements.txt
 RUN pip install -r requirements.txt
 
 COPY ./src/ingest-eod.py /ingest-eod.py
-COPY ./src/RedisWorkQueue.py /RedisWorkQueue.py
+COPY ./src/RedisQueueWorker.py /RedisQueueWorker.py
 COPY ./src/EOD.py /EOD.py
 
 CMD  python ingest-eod.py
