@@ -8,9 +8,9 @@ import hashlib
 # Third party
 import redis
 
-class RedisWorkQueue(object):
+class RedisQueueWorker(object):
     def __init__(self, name):
-       self._db = redis.StrictRedis(host="redis")
+       self._r = redis.StrictRedis(host="redis")
        self._session = str(uuid.uuid4())
        self._main_q_key = name
        self._processing_q_key = name + ":processing"
@@ -18,11 +18,11 @@ class RedisWorkQueue(object):
 
 
     def _main_qsize(self):
-        return self._db.llen(self._main_q_key)
+        return self._r.llen(self._main_q_key)
 
 
     def _processing_qsize(self):
-        return self._db.llen(self._processing_q_key)
+        return self._r.llen(self._processing_q_key)
 
 
     def _itemkey(self, item):
@@ -31,7 +31,7 @@ class RedisWorkQueue(object):
 
 
     def _lease_exists(self, item):
-        return self._db.exists(self._lease_key_prefix + self._itemkey(item))
+        return self._r.exists(self._lease_key_prefix + self._itemkey(item))
 
 
     def sessionID(self):
@@ -44,19 +44,19 @@ class RedisWorkQueue(object):
 
     def lease(self, lease_secs=60, block=True, timeout=None):
         if block:
-            item = self._db.brpoplpush(
+            item = self._r.brpoplpush(
                 self._main_q_key,
                 self._processing_q_key,
                 timeout=timeout
             )
         else:
-            item = self._db.rpoplpush(
+            item = self._r.rpoplpush(
                 self._main_q_key,
                 self._processing_q_key
             )
         if item:
             itemkey = self._itemkey(item)
-            self._db.setex(
+            self._r.setex(
                 self._lease_key_prefix + itemkey,
                 lease_secs,
                 self._session
@@ -64,6 +64,6 @@ class RedisWorkQueue(object):
         return item
 
     def complete(self, value):
-        self._db.lrem(self._processing_q_key, 0, value)
+        self._r.lrem(self._processing_q_key, 0, value)
         itemkey = self._itemkey(value)
-        self._db.delete(self._lease_key_prefix + itemkey)
+        self._r.delete(self._lease_key_prefix + itemkey)

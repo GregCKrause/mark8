@@ -6,7 +6,7 @@ import os
 
 # Local
 from EOD import EOD
-from RedisWorkQueue import RedisWorkQueue
+from RedisQueueWorker import RedisQueueWorker
 
 MONGO_USERNAME=os.getenv("MONGO_INITDB_ROOT_USERNAME")
 MONGO_PASSWORD=os.getenv("MONGO_INITDB_ROOT_PASSWORD")
@@ -16,7 +16,7 @@ if __name__=="__main__":
 
   updater = EOD(MONGO_USERNAME, MONGO_PASSWORD, QUANDL_API_KEY)
 
-  queue = RedisWorkQueue(name="ingesteod")
+  queue = RedisQueueWorker(name="ingesteod")
   print("Worker with sessionID: " +  queue.sessionID())
   print("Initial queue state: empty=" + str(queue.empty()))
 
@@ -26,7 +26,7 @@ if __name__=="__main__":
       symbol = item.decode("utf-8").upper()
       print("Working on " + symbol)
       try:
-        updater.update_symbol(symbol)
+        updater.update_symbol_collection(symbol)
       except Exception as e:
         print("Exception thrown during update_symbol", symbol, e)
       queue.complete(item)

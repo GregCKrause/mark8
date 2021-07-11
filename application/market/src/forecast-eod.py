@@ -6,7 +6,7 @@ import os
 
 # Local
 from EOD import EOD
-from RedisWorkQueue import RedisWorkQueue
+from RedisQueueWorker import RedisQueueWorker
 
 MONGO_USERNAME=os.getenv("MONGO_INITDB_ROOT_USERNAME")
 MONGO_PASSWORD=os.getenv("MONGO_INITDB_ROOT_PASSWORD")
@@ -16,7 +16,7 @@ if __name__=="__main__":
 
   updater = EOD(MONGO_USERNAME, MONGO_PASSWORD, QUANDL_API_KEY)
 
-  queue = RedisWorkQueue(name="forecasteod")
+  queue = RedisQueueWorker(name="forecasteod")
   print("Worker with sessionID: " +  queue.sessionID())
   print("Initial queue state: empty=" + str(queue.empty()))
 

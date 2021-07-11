@@ -1,0 +1,32 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: queue-ingest-eod
+spec:
+  parallelism: 1
+  template:
+    metadata:
+      name: queue-ingest-eod
+    spec:
+      containers:
+      - name: queue-eod
+        image: gregckrause/queue-eod:latest
+        env:
+        - name: QUEUE
+          value: "ingesteod"
+        - name: MONGO_INITDB_ROOT_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: mongo
+              key: RootUser
+        - name: MONGO_INITDB_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mongo
+              key: RootPassword
+        - name: QUANDL_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: quandl
+              key: APIKey
+      restartPolicy: OnFailure
