@@ -1,8 +1,8 @@
 # Quick start
 
 ```sh
-## Uncomment to use minikube
-# minikube --memory max --cpus max start
+## Can also set --memory max --cpus max
+minikube start
 
 # Create Mongo namespace
 kubectl create namespace mark8
