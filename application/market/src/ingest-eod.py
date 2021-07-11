@@ -22,11 +22,14 @@ if __name__=="__main__":
   print("Initial queue state: empty=" + str(queue.empty()))
 
   while not queue.empty():
-    item = queue.lease(lease_secs=10, block=True, timeout=2) 
+    item = queue.lease(lease_secs=60, block=True, timeout=2) 
     if item is not None:
       symbol = item.decode("utf-8").upper()
       print("Working on " + symbol)
-      updater.update_symbol(symbol)
+      try:
+        updater.update_symbol(symbol)
+      except Exception as e:
+        print("Exception thrown during update_symbol", symbol, e)
       queue.complete(item)
     else:
       print("Waiting for work")
