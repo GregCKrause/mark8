@@ -7,9 +7,16 @@ from pymongo import MongoClient, ReplaceOne, UpdateOne
 import quandl
 
 class EOD(object):
-  def __init__(self, quandl_api_key, mongo_username=None, mongo_password=None):
+  def __init__(
+    self,
+    quandl_api_key,
+    mongo_username=None,
+    mongo_password=None,
+    mongo_host="host.minikube.internal",
+    mongo_port=27017
+  ):
     self._mongo_db = MongoClient(
-      'mongodb://host.minikube.internal:27017',
+      'mongodb://%s:%s' % (mongo_host, mongo_port),
       username=mongo_username,
       password=mongo_password
     )['eod']
@@ -52,9 +59,9 @@ class EOD(object):
     return result
 
 
-  def get_symbols(self):
+  def get_symbols(self, filter={}):
     """Returns mongo db[symbols] collection"""
-    return list(self._mongo_db["symbols"].find({}))
+    return list(self._mongo_db["symbols"].find(filter))
 
 
   def update_symbol_collection(self, symbol):
@@ -80,17 +87,39 @@ class EOD(object):
   def get_symbol_df(self, symbol):
     """Returns all documents in mongo db[<symbol>] collection as dataframe"""
     print("Loading Mongo EOD collection for symbol", symbol)
-    df = pd.DataFrame.from_records(self._mongo_db[symbol].find({}))
-    print(df.count().max(), "documents found")
+    try:
+      df = pd.DataFrame.from_records(self._mongo_db[symbol].find({}))
+      print(df.count().max(), "documents found")
+
+      # Assign row GUID's, retain symbol
+      df["symbol"] = symbol
+      df["date"] = df["_id"]
+      df["_id"] = df["_id"] + "-" + df["symbol"]
+    except KeyError:
+      print(
+        "_id not found. %s collection is malformed or non-existent" % symbol
+      )
+      print("Returning empty dataframe")
+      df = pd.DataFrame()
 
     return df
 
 
+  def get_symbols_df(self, filter={"status": "ACTIVE"}):
+    """Returns symbol documents for all symbols matching db[symbols] filter"""
+    symbols = self.get_symbols(filter)
+
+    return pd.concat(
+      [self.get_symbol_df(symbol["_id"]) for symbol in symbols]
+    )
+
+
   def forecast_symbol(self, symbol, periods=7):
     """Upserts mongo db[<symbol>-forecast] collection"""
-    # df = self.get_symbol_df(self, symbol)
-  
-    # predictions["_id"] = # ID
+    df = self.get_symbols_df()
+
+    # TODO
+    # predictions = predict(df)
 
     # print("Loading records to Mongo")
     # records = predictions.to_dict("records")
