@@ -14,7 +14,7 @@ MONGO_USERNAME=os.getenv("MONGO_INITDB_ROOT_USERNAME")
 MONGO_PASSWORD=os.getenv("MONGO_INITDB_ROOT_PASSWORD")
 QUANDL_API_KEY=os.getenv("QUANDL_API_KEY")
 
-updater = EOD(MONGO_USERNAME, MONGO_PASSWORD, QUANDL_API_KEY)
+updater = EOD(QUANDL_API_KEY, MONGO_USERNAME, MONGO_PASSWORD)
 r = redis.StrictRedis(host="redis")
 
 symbols = updater.get_symbols()

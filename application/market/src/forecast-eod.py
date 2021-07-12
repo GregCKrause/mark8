@@ -14,7 +14,7 @@ QUANDL_API_KEY=os.getenv("QUANDL_API_KEY")
 
 if __name__=="__main__":
 
-  updater = EOD(MONGO_USERNAME, MONGO_PASSWORD, QUANDL_API_KEY)
+  updater = EOD(QUANDL_API_KEY, MONGO_USERNAME, MONGO_PASSWORD)
 
   queue = RedisQueueWorker(name="forecasteod")
   print("Worker with sessionID: " +  queue.sessionID())

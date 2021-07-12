@@ -7,9 +7,9 @@ from pymongo import MongoClient, ReplaceOne, UpdateOne
 import quandl
 
 class EOD(object):
-  def __init__(self, mongo_username, mongo_password, quandl_api_key):
+  def __init__(self, quandl_api_key, mongo_username=None, mongo_password=None):
     self._mongo_db = MongoClient(
-      'mongodb://mongo:27017',
+      'mongodb://host.minikube.internal:27017',
       username=mongo_username,
       password=mongo_password
     )['eod']

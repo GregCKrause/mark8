@@ -16,14 +16,8 @@ kubectl create secret generic --namespace mark8 mongo \
 kubectl create secret generic --namespace mark8 quandl \
   --from-literal=APIKey="<quandl-api-token>"
 
-# Create Mongo persistent volume
-kubectl -n mark8 apply -f ./application/mongo/mongo-pv.yaml
-
-# Create Mongo deployment
-kubectl -n mark8 apply -f ./application/mongo/mongo-deployment.yaml
-
-# Check deployment status
-kubectl -n mark8 describe deployment mongo
+# Ensure mongo is running locally
+mongotop
 
 # Create Redis service
 kubectl -n mark8 apply -f ./application/redis/redis-service.yaml
