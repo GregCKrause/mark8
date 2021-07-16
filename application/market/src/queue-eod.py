@@ -8,7 +8,6 @@ import redis
 from EOD import EOD
 from symbols import symbols as default_symbols
 
-# One of ["ingesteod", "forecasteod"]
 QUEUE=os.getenv("QUEUE")
 MONGO_USERNAME=os.getenv("MONGO_INITDB_ROOT_USERNAME")
 MONGO_PASSWORD=os.getenv("MONGO_INITDB_ROOT_PASSWORD")

@@ -3,7 +3,7 @@ kind: Job
 metadata:
   name: forecast-eod
 spec:
-  parallelism: 4
+  parallelism: 1
   template:
     metadata:
       name: forecast-eod
@@ -22,4 +22,9 @@ spec:
             secretKeyRef:
               name: mongo
               key: RootPassword
+        - name: QUANDL_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: quandl
+              key: APIKey
       restartPolicy: OnFailure

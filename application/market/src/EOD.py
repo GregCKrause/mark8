@@ -1,10 +1,29 @@
 # Standard library
 from datetime import datetime as dt
+from datetime import timedelta
 
 # Third party
+from gluonts.model import deepar
+from gluonts.mx.trainer import Trainer
+from gluonts.dataset.common import ListDataset
 import pandas as pd
 from pymongo import MongoClient, ReplaceOne, UpdateOne
 import quandl
+
+PERIODS = 21
+DYNAMIC_FEATS = [
+    "Open",
+    "High",
+    "Low",
+    "Close",
+    "Volume",
+    "Dividend",
+    "Split",
+    "Adj_Open",
+    "Adj_High",
+    "Adj_Low",
+    "Adj_Volume"
+]
 
 class EOD(object):
   def __init__(
@@ -114,21 +133,68 @@ class EOD(object):
     )
 
 
-  def forecast_symbol(self, symbol, periods=7):
-    """Upserts mongo db[<symbol>-forecast] collection"""
+  def update_symbol_forecasts(self, periods=PERIODS):
+    """Upserts mongo db[forecasts] collection"""
     df = self.get_symbols_df()
 
-    # TODO
-    # predictions = predict(df)
+    split_date = dt.strftime(
+      dt.strptime(
+        df.date.max(),
+        "%Y-%m-%d"
+      ) - timedelta(periods),
+      "%Y-%m-%d"
+    )
 
-    # print("Loading records to Mongo")
-    # records = predictions.to_dict("records")
+    train_df = df[df.date < split_date]
+    test_df = df[df.date >= split_date]
 
-    # updates = self._to_batch_replacements(self, records)
 
-    # result = self._mongo_db[symbol + "-forecasts"].bulk_write(updates)
-    # print("Records loaded")
+    def _to_list_dataset(_df):
+        dfc = _df.copy()
+        dfc.index = dfc.date
+        datasets = [
+            {
+              'start': group.index[0],
+              'target': group.Adj_Close,
+              "dynamic_feat": group[DYNAMIC_FEATS].values,
+              "cat": hash(symbol)
+            } for symbol, group in dfc.groupby(["symbol"])
+        ]
+        return ListDataset(datasets, freq="D")
 
-    # return result
+    train_dataset = _to_list_dataset(train_df)
+    test_dataset = _to_list_dataset(test_df)
 
-    return
+    trainer = Trainer(epochs=25)
+    estimator = deepar.DeepAREstimator(
+        freq="D",
+        prediction_length=periods*2,
+        trainer=trainer,
+        context_length=365 
+    )
+
+    predictor = estimator.train(train_dataset)
+
+    predictions = pd.DataFrame.from_records(
+        [prediction.mean for prediction in predictor.predict(test_dataset)]
+    )
+
+    predictions.columns = [
+        dt.strftime(dt.strptime(split_date, "%Y-%m-%d") + timedelta(i), "%Y-%m-%d")
+        for i in range(periods*2)
+    ]
+    predictions["symbol"] = test_df.groupby(["symbol"]).groups
+    predictions = predictions.set_index(["symbol"]).unstack().sort_index(level=1).reset_index()
+    predictions = predictions.rename(columns={"level_0": "date", 0: "y_hat"})
+    predictions["_id"] = predictions["date"] + "-" + predictions["symbol"]
+    predictions["last_updated"] = dt.strftime(dt.now(), "%Y-%m-%d")
+
+    print("Loading records to Mongo")
+    records = predictions.to_dict("records")
+
+    updates = self._to_batch_replacements(self, records)
+
+    result = self._mongo_db["forecasts"].bulk_write(updates)
+    print("Records loaded")
+
+    return result

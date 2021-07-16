@@ -1,8 +1,8 @@
 # Quick start
 
 ```sh
-## Can also set --memory max --cpus max
-minikube start
+## (Optional) Start minikube cluster
+minikube start --memory max --cpus max
 
 # Create Mongo namespace
 kubectl create namespace mark8
@@ -37,6 +37,15 @@ cd -
 # Run queue-ingest-eod job
 kubectl -n mark8 apply -f ./application/market/queue-ingest-eod.yaml
 
+# (Optional) Verify redis queue was populated
+kubectl -n mark8 run -i --tty temp --image redis --command "/bin/sh"
+## From shell
+redis-cli -h redis
+## In redis-cli
+lrange ingesteod 0 -1
+## After exiting
+kubectl -n mark8 delete pod temp
+
 # Build & push ingest-eod image
 cd ./application/market
 docker build -t gregckrause/ingest-eod . -f Dockerfile.ingest.eod
@@ -51,9 +60,6 @@ cd ./application/market
 docker build -t gregckrause/forecast-eod . -f Dockerfile.forecast.eod
 docker push gregckrause/forecast-eod:latest
 cd -
-
-# Run queue-forecast-eod job
-kubectl -n mark8 apply -f ./application/market/queue-forecast-eod.yaml
 
 # Run forecast job
 kubectl -n mark8 apply -f ./application/market/forecast-eod.yaml
