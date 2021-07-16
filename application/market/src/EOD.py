@@ -165,7 +165,7 @@ class EOD(object):
     train_dataset = _to_list_dataset(train_df)
     test_dataset = _to_list_dataset(test_df)
 
-    trainer = Trainer(epochs=25)
+    trainer = Trainer(epochs=5)
     estimator = deepar.DeepAREstimator(
         freq="D",
         prediction_length=periods*2,
@@ -192,7 +192,7 @@ class EOD(object):
     print("Loading records to Mongo")
     records = predictions.to_dict("records")
 
-    updates = self._to_batch_replacements(self, records)
+    updates = self._to_batch_replacements(records)
 
     result = self._mongo_db["forecasts"].bulk_write(updates)
     print("Records loaded")
