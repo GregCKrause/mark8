@@ -1,30 +1,35 @@
 apiVersion: batch/v1
-kind: Job
+kind: CronJob
 metadata:
   name: forecast-eod
 spec:
-  parallelism: 1
-  template:
-    metadata:
-      name: forecast-eod
+  # UTC
+  schedule: "30 2 * * *"
+  concurrencyPolicy: Replace
+  jobTemplate:
     spec:
-      containers:
-      - name: forecast-eod
-        image: gregckrause/forecast-eod:latest
-        env:
-        - name: MONGO_INITDB_ROOT_USERNAME
-          valueFrom:
-            secretKeyRef:
-              name: mongo
-              key: RootUser
-        - name: MONGO_INITDB_ROOT_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: mongo
-              key: RootPassword
-        - name: QUANDL_API_KEY
-          valueFrom:
-            secretKeyRef:
-              name: quandl
-              key: APIKey
-      restartPolicy: OnFailure
+      template:
+        metadata:
+          name: forecast-eod
+        spec:
+          containers:
+          - name: forecast-eod
+            image: gregckrause/forecast-eod:latest
+            env:
+            - name: MONGO_INITDB_ROOT_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: mongo
+                  key: RootUser
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mongo
+                  key: RootPassword
+            - name: QUANDL_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: quandl
+                  key: APIKey
+          restartPolicy: OnFailure
+      parallelism: 1

@@ -34,7 +34,7 @@ docker build -t gregckrause/queue-eod . -f Dockerfile.queue.eod
 docker push gregckrause/queue-eod:latest
 cd -
 
-# Run queue-ingest-eod job
+# Create queue-ingest-eod cronjob
 kubectl -n mark8 apply -f ./application/market/queue-ingest-eod.yaml
 
 # (Optional) Verify redis queue was populated
@@ -52,7 +52,7 @@ docker build -t gregckrause/ingest-eod . -f Dockerfile.ingest.eod
 docker push gregckrause/ingest-eod:latest
 cd -
 
-# Run ingest job
+# Create ingest cronjob
 kubectl -n mark8 apply -f ./application/market/ingest-eod.yaml
 
 # Build & push forecast-eod image
@@ -61,6 +61,6 @@ docker build -t gregckrause/forecast-eod . -f Dockerfile.forecast.eod
 docker push gregckrause/forecast-eod:latest
 cd -
 
-# Run forecast job
+# Create forecast cronjob
 kubectl -n mark8 apply -f ./application/market/forecast-eod.yaml
 ```
