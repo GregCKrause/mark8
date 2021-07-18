@@ -10,20 +10,7 @@ import pandas as pd
 from pymongo import MongoClient, ReplaceOne, UpdateOne
 import quandl
 
-PERIODS = 21
-DYNAMIC_FEATS = [
-    "Open",
-    "High",
-    "Low",
-    "Close",
-    "Volume",
-    "Dividend",
-    "Split",
-    "Adj_Open",
-    "Adj_High",
-    "Adj_Low",
-    "Adj_Volume"
-]
+PERIODS = 7
 
 class EOD(object):
   def __init__(
@@ -135,7 +122,36 @@ class EOD(object):
 
   def update_symbol_forecasts(self, periods=PERIODS):
     """Upserts mongo db[forecasts] collection"""
+    def _resample_groups(_df):
+      dfc = _df.copy()
+      dfc.index = pd.to_datetime(dfc.date)
+      dfc = dfc.groupby(["symbol"]).resample("D").pad()
+      dfc = dfc.drop(columns=["date", "symbol"])
+      dfc = dfc.reset_index()
+      dfc.date = dfc.date.apply(lambda x: x.strftime("%Y-%m-%d"))
+
+      return dfc
+
+
+    def _to_list_dataset(_df):
+        dfc = _df.copy()
+        dfc.index = dfc.date
+        datasets = [
+            {
+              'start': group.index[0],
+              'target': group.Adj_Close,
+              "cat": hash(symbol)
+            } for symbol, group in dfc.groupby(["symbol"])
+        ]
+
+        return ListDataset(datasets, freq="D")
+
+
+    # Pull all symbols to pandas dataframe
     df = self.get_symbols_df()
+
+    # Resample each symbol to fill in missing dates
+    df = _resample_groups(df)
 
     split_date = dt.strftime(
       dt.strptime(
@@ -146,45 +162,35 @@ class EOD(object):
     )
 
     train_df = df[df.date < split_date]
-    test_df = df[df.date >= split_date]
-
-
-    def _to_list_dataset(_df):
-        dfc = _df.copy()
-        dfc.index = dfc.date
-        datasets = [
-            {
-              'start': group.index[0],
-              'target': group.Adj_Close,
-              "dynamic_feat": group[DYNAMIC_FEATS].values,
-              "cat": hash(symbol)
-            } for symbol, group in dfc.groupby(["symbol"])
-        ]
-        return ListDataset(datasets, freq="D")
+    forecast_df = df.copy()
 
     train_dataset = _to_list_dataset(train_df)
-    test_dataset = _to_list_dataset(test_df)
+    forecast_dataset = _to_list_dataset(forecast_df)
 
-    trainer = Trainer(epochs=5)
+    trainer = Trainer()
     estimator = deepar.DeepAREstimator(
         freq="D",
-        prediction_length=periods*2,
-        trainer=trainer,
-        context_length=365 
+        prediction_length=periods,
+        trainer=trainer
     )
 
     predictor = estimator.train(train_dataset)
 
-    predictions = pd.DataFrame.from_records(
-        [prediction.mean for prediction in predictor.predict(test_dataset)]
-    )
+    predictions = pd.DataFrame.from_records([
+        prediction.mean
+        for prediction in predictor.predict(forecast_dataset)
+    ])
 
     predictions.columns = [
-        dt.strftime(dt.strptime(split_date, "%Y-%m-%d") + timedelta(i), "%Y-%m-%d")
-        for i in range(periods*2)
+      dt.strftime(
+        dt.strptime(df.date.max(), "%Y-%m-%d") + timedelta(i+1),
+        "%Y-%m-%d"
+      ) for i in range(periods)
     ]
-    predictions["symbol"] = test_df.groupby(["symbol"]).groups
-    predictions = predictions.set_index(["symbol"]).unstack().sort_index(level=1).reset_index()
+    predictions["symbol"] = forecast_df.groupby(["symbol"]).groups
+    predictions = predictions.set_index(
+      ["symbol"]
+    ).unstack().sort_index(level=1).reset_index()
     predictions = predictions.rename(columns={"level_0": "date", 0: "y_hat"})
     predictions["_id"] = predictions["date"] + "-" + predictions["symbol"]
     predictions["last_updated"] = dt.strftime(dt.now(), "%Y-%m-%d")
