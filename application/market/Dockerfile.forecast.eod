@@ -4,7 +4,6 @@ RUN pip install pip install --upgrade pip
 COPY ./requirements.txt ./requirements.txt
 RUN pip install -r requirements.txt
 
-COPY ./src/models /models
 COPY ./src/forecast-eod.py /forecast-eod.py
 COPY ./src/RedisQueueWorker.py /RedisQueueWorker.py
 COPY ./src/EOD.py /EOD.py

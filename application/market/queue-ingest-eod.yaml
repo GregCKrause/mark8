@@ -4,7 +4,7 @@ metadata:
   name: queue-ingest-eod
 spec:
   # UTC
-  schedule: "45 1 * * 1-5"
+  schedule: "20 3 * * 1-5"
   concurrencyPolicy: Replace
   jobTemplate:
     spec:

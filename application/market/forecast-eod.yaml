@@ -4,7 +4,7 @@ metadata:
   name: forecast-eod
 spec:
   # UTC
-  schedule: "30 4 * * *"
+  schedule: "20 4 * * *"
   concurrencyPolicy: Replace
   jobTemplate:
     spec:

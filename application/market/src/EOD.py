@@ -9,7 +9,6 @@ from gluonts.dataset.common import ListDataset
 import numpy as np
 import pandas as pd
 from pymongo import MongoClient, ReplaceOne, UpdateOne
-import tensorflow as tf
 import quandl
 
 PERIODS = 7
@@ -125,113 +124,7 @@ class EOD(object):
     )
 
 
-  def update_symbol_tf_forecasts(self, periods=PERIODS):
-    """Upserts mongo db[forecasts] collection using tensorflow"""
-
-
-    def get_forecast_dates(start_datetime):
-      forecast_dates = []
-      cntr = 1
-
-      while len(forecast_dates) < periods:
-          if (start_datetime + timedelta(days=cntr)).isoweekday():
-              forecast_dates.append(
-                  dt.strftime(
-                      start_datetime + timedelta(days=cntr),
-                      "%Y-%m-%d"
-                  )
-              )
-          
-          cntr += 1
-
-      return forecast_dates
-
-
-    # Pull all symbols to pandas dataframe
-    df = self.get_symbols_df()
-
-    # Capture unhashed symbols
-    symbols = df.symbol.unique()
-
-    # Remove unwanted columns
-    df = df[["date", "Adj_Close", "symbol"]]
-    df.columns = ["ds", "y", "symbol"]
-
-    # Parse & remove date
-    date_time = pd.to_datetime(df.pop("ds"), format="%Y-%m-%d")
-    timestamp_s = date_time.map(pd.Timestamp.timestamp)
-
-    # Make target feature relatively stationary via differencing
-    df["y"] = df["y"].pct_change()
-
-    # Generate feature with cyclical respect to week/year
-    df["week_sin"] = np.sin(timestamp_s * (2 * np.pi / WEEK))
-    df["week_cos"] = np.cos(timestamp_s * (2 * np.pi / WEEK))
-    df["year_sin"] = np.sin(timestamp_s * (2 * np.pi / YEAR))
-    df["year_cos"] = np.cos(timestamp_s * (2 * np.pi / YEAR))
-
-    # Convert symbols to randomish integer
-    df["symbol"] = df.symbol.apply(hash)
-
-    # Ensure all columns are numeric
-    df = df.apply(pd.to_numeric)
-
-    # Normalize features
-    mean = df.mean()
-    std = df.std()
-    df = (df - mean) / std
-
-    # Only keep recent periods
-    df = df.groupby(["symbol"], group_keys=False).apply(
-        lambda groupdf: groupdf.tail(PERIODS)
-    )
-
-    # Sequence recent periods
-    input_sequences = [
-        group_df.values
-        for _, group_df in df.groupby(["symbol"])
-    ]
-
-    # Convert sequence to tensor
-    input_tensor = tf.convert_to_tensor(input_sequences)
-
-    # Load trained model
-    model = tf.keras.models.load_model("models/eod-one-shot")
-
-    # Generate forecast sequences for each symbol
-    predictions = model(input_tensor)
-    predictions = pd.DataFrame([
-        prediction_seq.numpy()
-        for prediction_seq in predictions
-    ])
-    predictions.index = symbols
-    predictions.columns = get_forecast_dates(date_time.max())
-    predictions = pd.melt(
-        predictions.reset_index(),
-        id_vars="index"
-    )
-    predictions.columns = ["symbol", "date", "y_hat"]
-
-    # Denormalize predictions
-    predictions["y_hat"] = (predictions.y_hat * std["y"]) + mean["y"]
-    predictions["y_hat"] = predictions.y_hat * 100
-
-    predictions["_id"] = predictions["date"] + "-" + predictions["symbol"]
-    predictions["last_updated"] = dt.strftime(dt.now(), "%Y-%m-%d")
-    predictions["type"] = "tensorflow"
-
-    print("Loading records to Mongo")
-    records = predictions.to_dict("records")
-
-    updates = self._to_batch_replacements(records)
-
-    result = self._mongo_db["forecasts"].bulk_write(updates)
-    print("Records loaded")
-
-    return result
-
-
-  def update_symbol_gluonts_forecasts(self, periods=PERIODS):
+  def update_symbol_forecasts(self, periods=PERIODS):
     """Upserts mongo db[forecasts] collection using gluonts"""
     def _resample_groups(_df):
       dfc = _df.copy()

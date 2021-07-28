@@ -13,7 +13,6 @@ if __name__=="__main__":
 
   print("Running forecast-eod.py")
   try:
-    updater.update_symbol_tf_forecasts()
-    updater.update_symbol_gluonts_forecasts()
+    updater.update_symbol_forecasts()
   except Exception as e:
     print("Exception thrown during update forecasts", e)
